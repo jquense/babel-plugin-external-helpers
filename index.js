@@ -1,3 +1,16 @@
+var path = require('path');
+
+function getPath(filePath, pathBase, dest) {
+  var requirePath = path.relative(
+        path.dirname(filePath),
+        path.join(pathBase, dest)
+      );
+
+  if (requirePath[0] !== path.sep && requirePath[0] !== '.')
+    requirePath = '.' + path.sep + requirePath
+
+  return requirePath.replace(/\\/g, '/')
+}
 
 module.exports = function plugin(babel) {
   var Plugin = babel.Plugin || babel.Transformer
@@ -7,9 +20,15 @@ module.exports = function plugin(babel) {
     visitor: {
 
       Program: function(node, parent, scope, file) {
+        var options = file.opts.extra && file.opts.extra.externalHelperPlugin;
+
+        if (!options)
+          throw new Error('Missing options in babel config: `extra.externalHelperPlugin`')
+
         var filepath = path.normalize(file.opts.filename)
-          , cwd = filepath.substr(0, filepath.indexOf(path.normalize(file.opts.filenameRelative)))
-          , importPath = getPath(filepath, cwd, file.opts.extra.externalHelperPath)
+          , filebase = path.resolve(process.cwd(), path.normalize(options.base))
+          , cwd = filepath.substr(0, filepath.indexOf(filebase))
+          , importPath = getPath(filepath, filebase, options.path)
 
         var modulePath = file.resolveModuleSource(importPath)
           , name = 'babelHelpers'
